@@ -4,12 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🍯 幸运扭蛋机 🍯</title>
-    <!-- 引入 SheetJS 用于读取 Excel 文件 -->
+    <!-- 引入 SheetJS 用于读取 Excel 文件 (联机库) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
-
+        /* --- 1. 字体设置：使用系统自带的圆体/幼圆 --- */
         :root {
+            /* 优先使用幼圆(Win)或圆体(Mac)，没有则使用微软雅黑 */
+            --main-font: "YouYuan", "Yuanti SC", "STYuanti", "Microsoft YaHei", "SimHei", sans-serif;
+            
             /* 奶油蜂蜜色系 */
             --bg-color: #FFF8E1;        
             --honey-yellow: #FFC107;    
@@ -28,7 +30,8 @@
             background-color: var(--bg-color);
             background-image: radial-gradient(circle at 50% 50%, #FFECB3 2px, transparent 2.5px);
             background-size: 30px 30px;
-            font-family: 'ZCOOL KuaiLe', cursive, sans-serif;
+            font-family: var(--main-font);
+            font-weight: bold; /* 加粗让幼圆看起来更可爱 */
             overflow: hidden;
             color: var(--choco-brown);
             /* 全局禁止选中，防止拖动触发浏览器手势 */
@@ -141,7 +144,7 @@
         /* --- 按钮区 --- */
         .controls { margin-top: 40px; display: flex; gap: 20px; z-index: 20; }
         .btn {
-            padding: 12px 35px; font-size: 1.5rem; font-family: inherit;
+            padding: 12px 35px; font-size: 1.5rem; font-family: var(--main-font);
             border: 3px solid var(--choco-brown); border-radius: 50px; cursor: pointer;
             text-transform: uppercase; font-weight: bold;
             box-shadow: 0 6px 0 var(--choco-brown); transition: all 0.1s; outline: none;
@@ -226,18 +229,18 @@
 
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px dashed #ddd; padding-bottom: 10px; width: 100%; }
         .modal-title { font-size: 1.8rem; color: var(--choco-brown); }
-        .close-modal-btn { background: #FFCCBC; border: 2px solid var(--choco-brown); color: var(--choco-brown); padding: 5px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .close-modal-btn { background: #FFCCBC; border: 2px solid var(--choco-brown); color: var(--choco-brown); padding: 5px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: var(--main-font); }
         
         /* 表格样式修正：禁止选中，防止滚动链 */
         .table-container { 
             flex: 1; overflow-y: auto; margin-bottom: 15px; width: 100%; 
-            overscroll-behavior: contain; /* 防止滚动触底触发浏览器后退 */
+            overscroll-behavior: contain; 
         }
         table { width: 100%; border-collapse: collapse; }
         th { background: var(--honey-yellow); position: sticky; top: 0; color: var(--choco-brown); padding: 10px; text-align: left; user-select: none; }
         td { 
             padding: 8px; border-bottom: 1px solid #eee; color: #555; text-align: left; 
-            user-select: none; /* 关键：禁止选中文字，防止被识别为拖拽 */
+            user-select: none; 
             -webkit-user-select: none; 
             cursor: default;
         }
@@ -246,7 +249,7 @@
         .input-style { 
             padding: 10px; border: 2px solid var(--choco-brown); border-radius: 10px; 
             font-family: inherit; background: #FFF8E1; 
-            user-select: text; /* 输入框允许输入 */
+            user-select: text; 
             -webkit-user-select: text;
         }
         
@@ -256,6 +259,7 @@
             cursor: pointer; font-weight: bold; flex: 1; min-width: 80px; color: white;
             transition: all 0.1s; margin-top: 5px;
             user-select: none;
+            font-family: var(--main-font);
         }
         .action-btn:active { transform: translateY(2px); }
 
@@ -332,7 +336,7 @@
         </div>
     </div>
 
-    <!-- 2. Excel 导入确认弹窗 -->
+    <!-- 2. 导入确认弹窗 -->
     <div class="modal-overlay" id="importModal" style="z-index: 400;">
         <div class="dialog-content">
             <h3 class="dialog-title">📊 导入选项</h3>
@@ -368,10 +372,8 @@
     </div>
 
     <script>
-        /* --- 0. 防止拖拽触发浏览器导航 (关键修正) --- */
+        /* --- 0. 防止拖拽触发浏览器导航 --- */
         document.addEventListener('dragstart', (e) => {
-            // 禁止全局拖拽，防止触控板或鼠标拖拽文字触发返回
-            // 允许输入框内的默认行为
             if (e.target.tagName !== 'INPUT') {
                 e.preventDefault();
             }
@@ -392,9 +394,8 @@
             {id: 41, name: "方怡航"}
         ];
 
-        let students = JSON.parse(localStorage.getItem('studentList_v6')) || defaultStudents;
+        let students = JSON.parse(localStorage.getItem('studentList_v8')) || defaultStudents;
 
-        // 3D球体配色
         const ballColors = [
             { h: '#FFCDD2', b: '#E57373', s: '#B71C1C' }, { h: '#C8E6C9', b: '#81C784', s: '#2E7D32' }, 
             { h: '#BBDEFB', b: '#64B5F6', s: '#1565C0' }, { h: '#FFF9C4', b: '#FFF176', s: '#FBC02D' }, 
@@ -442,24 +443,20 @@
             closeConfirm();
         });
 
-
         /* --- 2. 扭蛋机逻辑 --- */
         function fillMachine() {
             globe.innerHTML = '';
             let ballCount = Math.max(20, Math.min(40, students.length));
-            
             for(let i=0; i<ballCount; i++) {
                 const ball = document.createElement('div');
                 ball.classList.add('ball');
                 const size = Math.random() * 15 + 30;
                 ball.style.width = `${size}px`;
                 ball.style.height = `${size}px`;
-                
                 const colorSet = ballColors[Math.floor(Math.random() * ballColors.length)];
                 ball.style.setProperty('--highlight', colorSet.h);
                 ball.style.setProperty('--base', colorSet.b);
                 ball.style.setProperty('--shadow', colorSet.s);
-
                 ball.style.left = Math.random() * 210 + 'px';
                 ball.style.top = Math.random() * 180 + 40 + 'px';
                 ball.style.transform = `rotate(${Math.random() * 360}deg)`;
@@ -474,7 +471,6 @@
             if(students.length === 0) { myAlert('名单为空！请在设置中导入名单。'); return; }
             isRunning = true;
             startBtn.disabled = true;
-            
             machineWrapper.classList.add('shaking');
             knobArea.classList.add('active');
 
@@ -541,7 +537,7 @@
                 tr.innerHTML = `<td>${s.id}</td><td>${s.name}</td><td><button style="background:#FFAB91; border:1px solid #BF360C; color:#fff; border-radius:5px; cursor:pointer;" onclick="delStudent(${index})">删除</button></td>`;
                 tableBody.appendChild(tr);
             });
-            localStorage.setItem('studentList_v6', JSON.stringify(students));
+            localStorage.setItem('studentList_v8', JSON.stringify(students));
             fillMachine();
         }
 
@@ -567,7 +563,7 @@
             });
         };
 
-        /* --- 4. EXCEL 导入逻辑 --- */
+        /* --- 4. EXCEL 导入逻辑 (使用 SheetJS) --- */
         const excelInput = document.getElementById('excelInput');
         const triggerImportBtn = document.getElementById('triggerImport');
         
