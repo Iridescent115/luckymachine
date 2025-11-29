@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍯 蜂蜜奶油·幸运扭蛋机 (强力搅拌版) 🍯</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+
+        :root {
+            /* 奶油蜂蜜色系 */
+            --bg-color: #FFF8E1;        
+            --honey-yellow: #FFC107;    
+            --honey-dark: #FF8F00;      
+            --honey-shadow: #E65100;    
+            --choco-brown: #5D4037;     
+            --white: #FFFFFF;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 50% 50%, #FFECB3 2px, transparent 2.5px);
+            background-size: 30px 30px;
+            font-family: 'ZCOOL KuaiLe', cursive, sans-serif;
+            overflow: hidden;
+            color: var(--choco-brown);
+        }
+
+        /* --- 右上角设置按钮 --- */
+        .settings-btn {
+            position: absolute;
+            top: 20px; right: 20px;
+            width: 50px; height: 50px;
+            background: var(--honey-yellow);
+            border: 3px solid var(--choco-brown);
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 4px 0 var(--choco-brown);
+            transition: transform 0.1s;
+            z-index: 200;
+        }
+        .settings-btn:active { transform: translateY(4px); box-shadow: 0 0 0 var(--choco-brown); }
+        .settings-icon { font-size: 28px; color: var(--choco-brown); transition: transform 0.5s; }
+        .settings-btn:hover .settings-icon { transform: rotate(90deg); }
+
+        /* --- 扭蛋机容器 --- */
+        .machine-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+        }
+
+        /* 顶部盖子 */
+        .machine-lid {
+            width: 140px; height: 40px;
+            background: var(--honey-dark);
+            border: 4px solid var(--choco-brown);
+            border-radius: 20px 20px 0 0;
+            margin-bottom: -10px; z-index: 15;
+            box-shadow: inset 0 5px 10px rgba(255,255,255,0.3);
+            position: relative;
+        }
+        .machine-lid::after {
+            content: ''; position: absolute;
+            top: -15px; left: 50%; transform: translateX(-50%);
+            width: 20px; height: 20px;
+            background: var(--honey-yellow);
+            border: 4px solid var(--choco-brown);
+            border-radius: 50%;
+        }
+
+        /* 玻璃球罩 */
+        .globe {
+            width: 260px; height: 260px;
+            background: radial-gradient(circle at 35% 35%, 
+                rgba(255,255,255,0.1) 0%, 
+                rgba(255,255,255,0.05) 40%, 
+                rgba(255,215,64, 0.2) 100%);
+            border: 4px solid var(--choco-brown);
+            border-radius: 50%;
+            position: relative;
+            z-index: 10;
+            overflow: hidden; /* 必须隐藏溢出，否则球会飞出去 */
+            box-shadow: 
+                inset 10px 10px 40px rgba(255,255,255,0.5),
+                inset -10px -20px 40px rgba(0,0,0,0.1),
+                0 10px 20px rgba(0,0,0,0.15);
+            background-color: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(2px);
+        }
+        /* 玻璃反光 */
+        .globe::after {
+            content: ''; position: absolute;
+            top: 40px; left: 40px;
+            width: 50px; height: 30px;
+            background: white; border-radius: 50%;
+            transform: rotate(-45deg); opacity: 0.6; filter: blur(2px);
+        }
+
+        /* --- 3D 糖果/扭蛋 --- */
+        .ball {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(0,0,0,0.1);
+            background: radial-gradient(circle at 30% 30%, var(--highlight) 0%, var(--base) 50%, var(--shadow) 100%);
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden;
+            /* 默认没有动画 */
+            transform: translate(0,0);
+        }
+        .ball::before {
+            content: ''; width: 100%; height: 20%;
+            background: rgba(255,255,255,0.4);
+            transform: rotate(-15deg);
+            border-top: 1px solid rgba(255,255,255,0.6);
+            border-bottom: 1px solid rgba(255,255,255,0.6);
+        }
+
+        /* --- 机器底座 --- */
+        .base {
+            width: 220px; height: 180px;
+            background: var(--honey-yellow);
+            border: 4px solid var(--choco-brown);
+            border-radius: 30px;
+            margin-top: -50px; z-index: 5;
+            position: relative;
+            box-shadow: inset 0 -10px 0 var(--honey-dark), 0 15px 0 #8d6e63, 0 25px 20px rgba(0,0,0,0.2);
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+            padding-bottom: 20px;
+        }
+
+        /* 旋钮 */
+        .knob-area {
+            position: absolute; top: 60px;
+            width: 80px; height: 80px;
+            background: #FFE082;
+            border-radius: 50%; border: 3px solid var(--choco-brown);
+            box-shadow: inset 0 -5px 0 rgba(0,0,0,0.1);
+            display: flex; justify-content: center; align-items: center;
+        }
+        .knob {
+            width: 20px; height: 60px;
+            background: var(--white);
+            border: 3px solid var(--choco-brown);
+            border-radius: 10px; cursor: pointer;
+            box-shadow: 0 4px 5px rgba(0,0,0,0.2);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .knob-area.active .knob { transform: rotate(360deg); }
+
+        .exit-door {
+            width: 100px; height: 60px;
+            background: #3E2723;
+            border-radius: 10px 10px 30px 30px;
+            border: 3px solid #5D4037;
+            position: relative; overflow: hidden; margin-bottom: 10px;
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.5);
+        }
+
+        /* 掉落动画用的球 */
+        .drop-ball {
+            position: absolute;
+            width: 50px; height: 50px;
+            border-radius: 50%; z-index: 8;
+            top: 200px; left: 50%; transform: translateX(-50%);
+            display: none;
+            border: 2px solid rgba(0,0,0,0.1);
+        }
+
+        /* --- 按钮区 --- */
+        .controls {
+            margin-top: 40px; display: flex; gap: 20px; z-index: 20;
+        }
+        .btn {
+            padding: 12px 35px; font-size: 1.5rem;
+            font-family: inherit; border: 3px solid var(--choco-brown);
+            border-radius: 50px; cursor: pointer;
+            text-transform: uppercase; font-weight: bold;
+            box-shadow: 0 6px 0 var(--choco-brown);
+            transition: all 0.1s; outline: none;
+        }
+        .btn-start { background: #FFCA28; color: var(--choco-brown); }
+        .btn-reset { background: #FFCCBC; color: #BF360C; display: none; }
+        .btn:active { transform: translateY(6px); box-shadow: 0 0 0 var(--choco-brown); }
+        .btn:disabled { background: #E0E0E0; color: #9E9E9E; box-shadow: 0 6px 0 #757575; cursor: not-allowed; }
+
+        /* --- 结果弹窗 --- */
+        .result-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex; justify-content: center; align-items: center;
+            z-index: 100;
+        }
+        .result-paper {
+            background: #FFF;
+            width: 0; height: 10px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            opacity: 0; transform: scale(0);
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            position: relative; overflow: hidden;
+            background-image: linear-gradient(#f0f0f0 1px, transparent 1px);
+            background-size: 100% 20px;
+        }
+        .result-paper::before, .result-paper::after {
+            content: ''; position: absolute; left: 0; width: 100%; height: 10px;
+            background: repeating-linear-gradient(45deg, var(--honey-yellow), var(--honey-yellow) 10px, var(--honey-dark) 10px, var(--honey-dark) 20px);
+        }
+        .result-paper::before { top: 0; }
+        .result-paper::after { bottom: 0; }
+
+        .result-paper.active {
+            width: 400px; height: 200px;
+            opacity: 1; transform: scale(1);
+            border: 5px solid var(--choco-brown);
+            border-radius: 10px; pointer-events: auto;
+        }
+        .result-content { text-align: center; opacity: 0; transition: opacity 0.3s ease 0.3s; }
+        .result-paper.active .result-content { opacity: 1; }
+        .result-id { font-size: 1.5rem; color: #AAA; margin-bottom: 5px; }
+        .result-name { font-size: 3.5rem; color: var(--honey-shadow); text-shadow: 2px 2px 0px #FFD54F; }
+
+        /* --- 关键动画升级：乱飞 --- */
+        
+        /* 定义一个动态的关键帧动画，使用CSS变量 */
+        @keyframes chaos-fly {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            20% { transform: translate(var(--x1), var(--y1)) rotate(70deg); }
+            40% { transform: translate(var(--x2), var(--y2)) rotate(140deg); }
+            60% { transform: translate(var(--x3), var(--y3)) rotate(210deg); }
+            80% { transform: translate(var(--x4), var(--y4)) rotate(280deg); }
+            100% { transform: translate(0, 0) rotate(360deg); }
+        }
+
+        .ball.chaos-active {
+            /* 0.5s的快速运动，alternate让它看起来像在来回弹 */
+            animation: chaos-fly 0.5s infinite alternate ease-in-out;
+        }
+
+        @keyframes shake-machine {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(2deg); }
+            50% { transform: rotate(-2deg); }
+            75% { transform: rotate(1deg); }
+            100% { transform: rotate(0deg); }
+        }
+        .machine-wrapper.shaking { animation: shake-machine 0.3s infinite; }
+
+        @keyframes drop-down-anim {
+            0% { top: 200px; opacity: 1; transform: translateX(-50%) scale(1); }
+            40% { top: 380px; transform: translateX(-50%) scale(0.9); }
+            60% { top: 370px; transform: translateX(-50%) scale(0.9); }
+            100% { top: 400px; opacity: 1; transform: translateX(-50%) scale(0.8); }
+        }
+        .dropping { animation: drop-down-anim 0.8s forwards ease-in; z-index: 20; }
+
+        /* --- 设置弹窗 --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(93, 64, 55, 0.6); display: none;
+            justify-content: center; align-items: center; z-index: 300; backdrop-filter: blur(4px);
+        }
+        .modal-content {
+            background: #FFF; width: 90%; max-width: 550px; height: 80%;
+            border-radius: 20px; padding: 20px; display: flex; flex-direction: column;
+            box-shadow: 0 10px 0 var(--choco-brown); border: 4px solid var(--choco-brown);
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px dashed #ddd; padding-bottom: 10px; }
+        .modal-title { font-size: 1.8rem; color: var(--choco-brown); }
+        .close-modal-btn { background: #FFCCBC; border: 2px solid var(--choco-brown); color: var(--choco-brown); padding: 5px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .table-container { flex: 1; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: var(--honey-yellow); position: sticky; top: 0; color: var(--choco-brown); padding: 10px; }
+        td { padding: 8px; border-bottom: 1px solid #eee; color: #555; }
+        .action-row { margin-top: 15px; display: flex; gap: 10px; padding-top: 10px; border-top: 2px dashed #ddd; }
+        .input-style { padding: 10px; border: 2px solid var(--choco-brown); border-radius: 10px; font-family: inherit; background: #FFF8E1; }
+        .add-btn-style { background: var(--honey-dark); color: white; border: 2px solid var(--choco-brown); border-radius: 10px; padding: 0 20px; cursor: pointer; }
+        
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--honey-yellow); border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <div class="settings-btn" id="openSettings"><div class="settings-icon">⚙️</div></div>
+
+    <div class="machine-wrapper" id="machineWrapper">
+        <div class="machine-lid"></div>
+        <div class="globe" id="globe"></div>
+        <div class="drop-ball" id="dropBall"></div>
+        <div class="base">
+            <div class="knob-area" id="knobArea"><div class="knob"></div></div>
+            <div class="exit-door"></div>
+        </div>
+        <div class="controls">
+            <button class="btn btn-start" id="startBtn">开始扭蛋</button>
+            <button class="btn btn-reset" id="resetBtn">重置</button>
+        </div>
+    </div>
+
+    <div class="result-overlay" id="resultOverlay">
+        <div class="result-paper" id="resultPaper">
+            <div class="result-content">
+                <div class="result-id" id="resultId">NO.1</div>
+                <div class="result-name" id="resultName">姓名</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">📝 学生名单设置</span>
+                <button class="close-modal-btn" id="closeSettings">关闭</button>
+            </div>
+            <div class="table-container">
+                <table id="studentTable">
+                    <thead><tr><th width="20%">序号</th><th width="50%">姓名</th><th width="30%">操作</th></tr></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+            <div class="action-row">
+                <input type="number" id="newId" class="input-style" placeholder="序号" style="width: 60px;">
+                <input type="text" id="newName" class="input-style" placeholder="姓名" style="flex: 1;">
+                <button class="add-btn-style" id="addStudent">添加</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* --- 1. 数据逻辑 --- */
+        const defaultStudents = [
+            {id: 1, name: "缪允赫"}, {id: 2, name: "梁宸睿"}, {id: 3, name: "聂子涵"}, {id: 4, name: "施议淳"},
+            {id: 5, name: "张贻程"}, {id: 6, name: "池诗婷"}, {id: 7, name: "姚嘉怡"}, {id: 8, name: "张馨予"},
+            {id: 9, name: "翁楚越"}, {id: 10, name: "王佑谦"}, {id: 11, name: "石芷瑜"}, {id: 12, name: "江尚颐"},
+            {id: 13, name: "黄龠翟"}, {id: 14, name: "刘邵毓"}, {id: 15, name: "熊祖韵"}, {id: 16, name: "向若冰"},
+            {id: 17, name: "陈泰宇"}, {id: 18, name: "秦思晗"}, {id: 19, name: "蒋淳宇"}, {id: 20, name: "徐瑜择"},
+            {id: 21, name: "张恩欣"}, {id: 22, name: "胡若楠"}, {id: 23, name: "丁宣含"}, {id: 24, name: "胡颢臻"},
+            {id: 25, name: "蒋京霖"}, {id: 26, name: "韩佳钰"}, {id: 27, name: "庄芯怡"}, {id: 28, name: "周承宇"},
+            {id: 29, name: "贺泽予"}, {id: 30, name: "金董晨"}, {id: 31, name: "徐穆溪"}, {id: 32, name: "王昕茹"},
+            {id: 33, name: "赵雨婷"}, {id: 34, name: "管瑾辰"}, {id: 35, name: "李晨雨"}, {id: 36, name: "刘怡暄"},
+            {id: 37, name: "张浩楠"}, {id: 38, name: "孙畅"}, {id: 39, name: "薛浩轩"}, {id: 40, name: "李珉宇"},
+            {id: 41, name: "方怡航"}
+        ];
+
+        let students = JSON.parse(localStorage.getItem('studentList_v3')) || defaultStudents;
+
+        const ballColors = [
+            { h: '#FFCDD2', b: '#E57373', s: '#B71C1C' }, 
+            { h: '#C8E6C9', b: '#81C784', s: '#2E7D32' }, 
+            { h: '#BBDEFB', b: '#64B5F6', s: '#1565C0' }, 
+            { h: '#FFF9C4', b: '#FFF176', s: '#FBC02D' }, 
+            { h: '#E1BEE7', b: '#BA68C8', s: '#7B1FA2' }, 
+            { h: '#FFE0B2', b: '#FFB74D', s: '#E65100' } 
+        ];
+
+        const globe = document.getElementById('globe');
+        const machineWrapper = document.getElementById('machineWrapper');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const knobArea = document.getElementById('knobArea');
+        const dropBall = document.getElementById('dropBall');
+        const resultPaper = document.getElementById('resultPaper');
+        const resultId = document.getElementById('resultId');
+        const resultName = document.getElementById('resultName');
+
+        /* --- 2. 初始化: 填充糖果 --- */
+        function fillMachine() {
+            globe.innerHTML = '';
+            for(let i=0; i<35; i++) {
+                const ball = document.createElement('div');
+                ball.classList.add('ball');
+                const size = Math.random() * 15 + 30; // 30-45px
+                ball.style.width = `${size}px`;
+                ball.style.height = `${size}px`;
+                
+                const colorSet = ballColors[Math.floor(Math.random() * ballColors.length)];
+                ball.style.setProperty('--highlight', colorSet.h);
+                ball.style.setProperty('--base', colorSet.b);
+                ball.style.setProperty('--shadow', colorSet.s);
+
+                // 初始静态位置
+                ball.style.left = Math.random() * 210 + 'px';
+                ball.style.top = Math.random() * 180 + 40 + 'px';
+                ball.style.transform = `rotate(${Math.random() * 360}deg)`;
+
+                globe.appendChild(ball);
+            }
+        }
+
+        /* --- 3. 抽奖与动画逻辑 --- */
+        let isRunning = false;
+
+        startBtn.addEventListener('click', () => {
+            if(isRunning) return;
+            if(students.length === 0) { alert('名单为空！'); return; }
+            isRunning = true;
+            startBtn.disabled = true;
+            
+            // 机器抖动
+            machineWrapper.classList.add('shaking');
+            knobArea.classList.add('active');
+
+            // --- 核心修改：让球乱飞 ---
+            const balls = document.querySelectorAll('.ball');
+            balls.forEach(ball => {
+                // 为每个球生成4个关键帧的随机位移 (范围 -80px 到 +80px)
+                const range = 80;
+                ball.style.setProperty('--x1', (Math.random() * range * 2 - range) + 'px');
+                ball.style.setProperty('--y1', (Math.random() * range * 2 - range) + 'px');
+                ball.style.setProperty('--x2', (Math.random() * range * 2 - range) + 'px');
+                ball.style.setProperty('--y2', (Math.random() * range * 2 - range) + 'px');
+                ball.style.setProperty('--x3', (Math.random() * range * 2 - range) + 'px');
+                ball.style.setProperty('--y3', (Math.random() * range * 2 - range) + 'px');
+                ball.style.setProperty('--x4', (Math.random() * range * 2 - range) + 'px');
+                ball.style.setProperty('--y4', (Math.random() * range * 2 - range) + 'px');
+                
+                // 激活乱飞动画
+                ball.classList.add('chaos-active');
+                
+                // 给每个球一点随机的动画延迟，看起来更混乱自然
+                ball.style.animationDelay = Math.random() * 0.1 + 's';
+            });
+
+            // 1.5秒后出结果
+            setTimeout(() => {
+                machineWrapper.classList.remove('shaking');
+                knobArea.classList.remove('active');
+                
+                // 停止乱飞
+                balls.forEach(ball => ball.classList.remove('chaos-active'));
+
+                // 选人
+                const luckyIndex = Math.floor(Math.random() * students.length);
+                const luckyStudent = students[luckyIndex];
+                const luckyColor = ballColors[Math.floor(Math.random() * ballColors.length)];
+
+                // 掉落球外观设置
+                dropBall.style.display = 'block';
+                dropBall.style.setProperty('--highlight', luckyColor.h);
+                dropBall.style.background = `radial-gradient(circle at 30% 30%, ${luckyColor.h} 0%, ${luckyColor.b} 50%, ${luckyColor.s} 100%)`;
+                
+                void dropBall.offsetWidth; // 触发重绘
+                dropBall.classList.add('dropping');
+
+                setTimeout(() => {
+                    dropBall.style.display = 'none';
+                    dropBall.classList.remove('dropping');
+                    resultId.innerText = `序号: ${luckyStudent.id}`;
+                    resultName.innerText = luckyStudent.name;
+                    resultPaper.classList.add('active');
+                    startBtn.style.display = 'none';
+                    resetBtn.style.display = 'inline-block';
+                    isRunning = false;
+                }, 800);
+            }, 1500); 
+        });
+
+        resetBtn.addEventListener('click', () => {
+            resultPaper.classList.remove('active');
+            setTimeout(() => {
+                resetBtn.style.display = 'none';
+                startBtn.style.display = 'inline-block';
+                startBtn.disabled = false;
+                fillMachine(); 
+            }, 500);
+        });
+
+        /* --- 4. 设置面板 --- */
+        const settingsModal = document.getElementById('settingsModal');
+        const tableBody = document.getElementById('tableBody');
+
+        function renderTable() {
+            tableBody.innerHTML = '';
+            students.forEach((s, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${s.id}</td><td>${s.name}</td><td><button style="background:#FFAB91; border:1px solid #BF360C; color:#fff; border-radius:5px; cursor:pointer;" onclick="delStudent(${index})">删除</button></td>`;
+                tableBody.appendChild(tr);
+            });
+            localStorage.setItem('studentList_v3', JSON.stringify(students));
+        }
+
+        document.getElementById('openSettings').addEventListener('click', () => { renderTable(); settingsModal.style.display = 'flex'; });
+        document.getElementById('closeSettings').addEventListener('click', () => { settingsModal.style.display = 'none'; });
+        document.getElementById('addStudent').addEventListener('click', () => {
+            const id = document.getElementById('newId').value.trim();
+            const name = document.getElementById('newName').value.trim();
+            if(id && name) {
+                students.push({id, name});
+                students.sort((a,b) => a.id - b.id);
+                document.getElementById('newId').value = ''; document.getElementById('newName').value = '';
+                renderTable();
+            } else { alert("请输入完整信息"); }
+        });
+        window.delStudent = function(index) {
+            if(confirm("确定删除吗？")) { students.splice(index, 1); renderTable(); }
+        };
+        settingsModal.addEventListener('click', (e) => { if(e.target === settingsModal) settingsModal.style.display = 'none'; });
+
+        fillMachine();
+    </script>
+</body>
+</html>
