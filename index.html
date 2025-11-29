@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍯 蜂蜜奶油·幸运扭蛋机 (强力搅拌版) 🍯</title>
+    <title>🍯 幸运扭蛋机 🍯</title>
+    <!-- 引入 SheetJS 用于读取 Excel 文件 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
 
@@ -14,37 +16,36 @@
             --honey-dark: #FF8F00;      
             --honey-shadow: #E65100;    
             --choco-brown: #5D4037;     
+            --matcha-green: #81C784;    
+            --danger-red: #E57373;      
+            --gray-cancel: #B0BEC5;
             --white: #FFFFFF;
         }
 
         body {
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            margin: 0; padding: 0; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
             background-color: var(--bg-color);
             background-image: radial-gradient(circle at 50% 50%, #FFECB3 2px, transparent 2.5px);
             background-size: 30px 30px;
             font-family: 'ZCOOL KuaiLe', cursive, sans-serif;
             overflow: hidden;
             color: var(--choco-brown);
+            /* 全局禁止选中，防止拖动触发浏览器手势 */
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         /* --- 右上角设置按钮 --- */
         .settings-btn {
-            position: absolute;
-            top: 20px; right: 20px;
+            position: absolute; top: 20px; right: 20px;
             width: 50px; height: 50px;
             background: var(--honey-yellow);
             border: 3px solid var(--choco-brown);
-            border-radius: 12px;
-            cursor: pointer;
+            border-radius: 12px; cursor: pointer;
             display: flex; justify-content: center; align-items: center;
             box-shadow: 0 4px 0 var(--choco-brown);
-            transition: transform 0.1s;
-            z-index: 200;
+            transition: transform 0.1s; z-index: 200;
         }
         .settings-btn:active { transform: translateY(4px); box-shadow: 0 0 0 var(--choco-brown); }
         .settings-icon { font-size: 28px; color: var(--choco-brown); transition: transform 0.5s; }
@@ -52,11 +53,7 @@
 
         /* --- 扭蛋机容器 --- */
         .machine-wrapper {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            z-index: 10;
+            position: relative; display: flex; flex-direction: column; align-items: center; z-index: 10;
         }
 
         /* 顶部盖子 */
@@ -70,12 +67,9 @@
             position: relative;
         }
         .machine-lid::after {
-            content: ''; position: absolute;
-            top: -15px; left: 50%; transform: translateX(-50%);
-            width: 20px; height: 20px;
-            background: var(--honey-yellow);
-            border: 4px solid var(--choco-brown);
-            border-radius: 50%;
+            content: ''; position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+            width: 20px; height: 20px; background: var(--honey-yellow);
+            border: 4px solid var(--choco-brown); border-radius: 50%;
         }
 
         /* 玻璃球罩 */
@@ -87,107 +81,70 @@
                 rgba(255,215,64, 0.2) 100%);
             border: 4px solid var(--choco-brown);
             border-radius: 50%;
-            position: relative;
-            z-index: 10;
-            overflow: hidden; /* 必须隐藏溢出，否则球会飞出去 */
-            box-shadow: 
-                inset 10px 10px 40px rgba(255,255,255,0.5),
-                inset -10px -20px 40px rgba(0,0,0,0.1),
-                0 10px 20px rgba(0,0,0,0.15);
-            background-color: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(2px);
+            position: relative; z-index: 10; overflow: hidden;
+            box-shadow: inset 10px 10px 40px rgba(255,255,255,0.5), inset -10px -20px 40px rgba(0,0,0,0.1), 0 10px 20px rgba(0,0,0,0.15);
+            background-color: rgba(255, 255, 255, 0.2); backdrop-filter: blur(2px);
         }
-        /* 玻璃反光 */
         .globe::after {
-            content: ''; position: absolute;
-            top: 40px; left: 40px;
-            width: 50px; height: 30px;
-            background: white; border-radius: 50%;
-            transform: rotate(-45deg); opacity: 0.6; filter: blur(2px);
+            content: ''; position: absolute; top: 40px; left: 40px; width: 50px; height: 30px;
+            background: white; border-radius: 50%; transform: rotate(-45deg); opacity: 0.6; filter: blur(2px);
         }
 
-        /* --- 3D 糖果/扭蛋 --- */
+        /* --- 3D 糖果 --- */
         .ball {
-            position: absolute;
-            border-radius: 50%;
+            position: absolute; border-radius: 50%;
             border: 1px solid rgba(0,0,0,0.1);
             background: radial-gradient(circle at 30% 30%, var(--highlight) 0%, var(--base) 50%, var(--shadow) 100%);
             box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
-            display: flex; justify-content: center; align-items: center;
-            overflow: hidden;
-            /* 默认没有动画 */
+            display: flex; justify-content: center; align-items: center; overflow: hidden;
             transform: translate(0,0);
         }
         .ball::before {
-            content: ''; width: 100%; height: 20%;
-            background: rgba(255,255,255,0.4);
-            transform: rotate(-15deg);
-            border-top: 1px solid rgba(255,255,255,0.6);
-            border-bottom: 1px solid rgba(255,255,255,0.6);
+            content: ''; width: 100%; height: 20%; background: rgba(255,255,255,0.4);
+            transform: rotate(-15deg); border-top: 1px solid rgba(255,255,255,0.6); border-bottom: 1px solid rgba(255,255,255,0.6);
         }
 
         /* --- 机器底座 --- */
         .base {
-            width: 220px; height: 180px;
-            background: var(--honey-yellow);
-            border: 4px solid var(--choco-brown);
-            border-radius: 30px;
-            margin-top: -50px; z-index: 5;
-            position: relative;
+            width: 220px; height: 180px; background: var(--honey-yellow);
+            border: 4px solid var(--choco-brown); border-radius: 30px;
+            margin-top: -50px; z-index: 5; position: relative;
             box-shadow: inset 0 -10px 0 var(--honey-dark), 0 15px 0 #8d6e63, 0 25px 20px rgba(0,0,0,0.2);
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-            padding-bottom: 20px;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 20px;
         }
 
-        /* 旋钮 */
         .knob-area {
-            position: absolute; top: 60px;
-            width: 80px; height: 80px;
-            background: #FFE082;
-            border-radius: 50%; border: 3px solid var(--choco-brown);
-            box-shadow: inset 0 -5px 0 rgba(0,0,0,0.1);
-            display: flex; justify-content: center; align-items: center;
+            position: absolute; top: 60px; width: 80px; height: 80px;
+            background: #FFE082; border-radius: 50%; border: 3px solid var(--choco-brown);
+            box-shadow: inset 0 -5px 0 rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center;
         }
         .knob {
-            width: 20px; height: 60px;
-            background: var(--white);
-            border: 3px solid var(--choco-brown);
-            border-radius: 10px; cursor: pointer;
-            box-shadow: 0 4px 5px rgba(0,0,0,0.2);
-            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            width: 20px; height: 60px; background: var(--white);
+            border: 3px solid var(--choco-brown); border-radius: 10px; cursor: pointer;
+            box-shadow: 0 4px 5px rgba(0,0,0,0.2); transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .knob-area.active .knob { transform: rotate(360deg); }
 
         .exit-door {
-            width: 100px; height: 60px;
-            background: #3E2723;
-            border-radius: 10px 10px 30px 30px;
-            border: 3px solid #5D4037;
+            width: 100px; height: 60px; background: #3E2723;
+            border-radius: 10px 10px 30px 30px; border: 3px solid #5D4037;
             position: relative; overflow: hidden; margin-bottom: 10px;
             box-shadow: inset 0 5px 10px rgba(0,0,0,0.5);
         }
 
-        /* 掉落动画用的球 */
         .drop-ball {
-            position: absolute;
-            width: 50px; height: 50px;
-            border-radius: 50%; z-index: 8;
-            top: 200px; left: 50%; transform: translateX(-50%);
-            display: none;
-            border: 2px solid rgba(0,0,0,0.1);
+            position: absolute; width: 50px; height: 50px;
+            border-radius: 50%; z-index: 8; top: 200px; left: 50%; transform: translateX(-50%);
+            display: none; border: 2px solid rgba(0,0,0,0.1);
         }
 
         /* --- 按钮区 --- */
-        .controls {
-            margin-top: 40px; display: flex; gap: 20px; z-index: 20;
-        }
+        .controls { margin-top: 40px; display: flex; gap: 20px; z-index: 20; }
         .btn {
-            padding: 12px 35px; font-size: 1.5rem;
-            font-family: inherit; border: 3px solid var(--choco-brown);
-            border-radius: 50px; cursor: pointer;
+            padding: 12px 35px; font-size: 1.5rem; font-family: inherit;
+            border: 3px solid var(--choco-brown); border-radius: 50px; cursor: pointer;
             text-transform: uppercase; font-weight: bold;
-            box-shadow: 0 6px 0 var(--choco-brown);
-            transition: all 0.1s; outline: none;
+            box-shadow: 0 6px 0 var(--choco-brown); transition: all 0.1s; outline: none;
         }
         .btn-start { background: #FFCA28; color: var(--choco-brown); }
         .btn-reset { background: #FFCCBC; color: #BF360C; display: none; }
@@ -196,21 +153,16 @@
 
         /* --- 结果弹窗 --- */
         .result-overlay {
-            position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%;
-            pointer-events: none;
-            display: flex; justify-content: center; align-items: center;
-            z-index: 100;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: flex; justify-content: center; align-items: center; z-index: 100;
         }
         .result-paper {
-            background: #FFF;
-            width: 0; height: 10px;
+            background: #FFF; width: 0; height: 10px;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             opacity: 0; transform: scale(0);
             transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
             position: relative; overflow: hidden;
-            background-image: linear-gradient(#f0f0f0 1px, transparent 1px);
-            background-size: 100% 20px;
+            background-image: linear-gradient(#f0f0f0 1px, transparent 1px); background-size: 100% 20px;
         }
         .result-paper::before, .result-paper::after {
             content: ''; position: absolute; left: 0; width: 100%; height: 10px;
@@ -218,21 +170,16 @@
         }
         .result-paper::before { top: 0; }
         .result-paper::after { bottom: 0; }
-
         .result-paper.active {
-            width: 400px; height: 200px;
-            opacity: 1; transform: scale(1);
-            border: 5px solid var(--choco-brown);
-            border-radius: 10px; pointer-events: auto;
+            width: 400px; height: 200px; opacity: 1; transform: scale(1);
+            border: 5px solid var(--choco-brown); border-radius: 10px; pointer-events: auto;
         }
         .result-content { text-align: center; opacity: 0; transition: opacity 0.3s ease 0.3s; }
         .result-paper.active .result-content { opacity: 1; }
         .result-id { font-size: 1.5rem; color: #AAA; margin-bottom: 5px; }
         .result-name { font-size: 3.5rem; color: var(--honey-shadow); text-shadow: 2px 2px 0px #FFD54F; }
 
-        /* --- 关键动画升级：乱飞 --- */
-        
-        /* 定义一个动态的关键帧动画，使用CSS变量 */
+        /* --- 动画 --- */
         @keyframes chaos-fly {
             0% { transform: translate(0, 0) rotate(0deg); }
             20% { transform: translate(var(--x1), var(--y1)) rotate(70deg); }
@@ -241,21 +188,12 @@
             80% { transform: translate(var(--x4), var(--y4)) rotate(280deg); }
             100% { transform: translate(0, 0) rotate(360deg); }
         }
-
-        .ball.chaos-active {
-            /* 0.5s的快速运动，alternate让它看起来像在来回弹 */
-            animation: chaos-fly 0.5s infinite alternate ease-in-out;
-        }
-
+        .ball.chaos-active { animation: chaos-fly 0.5s infinite alternate ease-in-out; }
         @keyframes shake-machine {
-            0% { transform: rotate(0deg); }
-            25% { transform: rotate(2deg); }
-            50% { transform: rotate(-2deg); }
-            75% { transform: rotate(1deg); }
-            100% { transform: rotate(0deg); }
+            0% { transform: rotate(0deg); } 25% { transform: rotate(2deg); }
+            50% { transform: rotate(-2deg); } 75% { transform: rotate(1deg); } 100% { transform: rotate(0deg); }
         }
         .machine-wrapper.shaking { animation: shake-machine 0.3s infinite; }
-
         @keyframes drop-down-anim {
             0% { top: 200px; opacity: 1; transform: translateX(-50%) scale(1); }
             40% { top: 380px; transform: translateX(-50%) scale(0.9); }
@@ -264,28 +202,77 @@
         }
         .dropping { animation: drop-down-anim 0.8s forwards ease-in; z-index: 20; }
 
-        /* --- 设置弹窗 --- */
+        /* --- 各种弹窗通用蒙层 --- */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(93, 64, 55, 0.6); display: none;
             justify-content: center; align-items: center; z-index: 300; backdrop-filter: blur(4px);
         }
-        .modal-content {
-            background: #FFF; width: 90%; max-width: 550px; height: 80%;
+        
+        /* 1. 设置弹窗内容 */
+        .settings-content {
+            background: #FFF; width: 90%; max-width: 550px; height: 85%;
             border-radius: 20px; padding: 20px; display: flex; flex-direction: column;
             box-shadow: 0 10px 0 var(--choco-brown); border: 4px solid var(--choco-brown);
         }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px dashed #ddd; padding-bottom: 10px; }
+
+        /* 2. 导入/确认/提示 小弹窗内容 */
+        .dialog-content {
+            background: #FFF; width: 300px; padding: 25px;
+            border-radius: 20px; display: flex; flex-direction: column; align-items: center;
+            box-shadow: 0 10px 0 var(--choco-brown); border: 4px solid var(--choco-brown);
+            text-align: center; z-index: 500;
+        }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px dashed #ddd; padding-bottom: 10px; width: 100%; }
         .modal-title { font-size: 1.8rem; color: var(--choco-brown); }
         .close-modal-btn { background: #FFCCBC; border: 2px solid var(--choco-brown); color: var(--choco-brown); padding: 5px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .table-container { flex: 1; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; }
-        th { background: var(--honey-yellow); position: sticky; top: 0; color: var(--choco-brown); padding: 10px; }
-        td { padding: 8px; border-bottom: 1px solid #eee; color: #555; }
-        .action-row { margin-top: 15px; display: flex; gap: 10px; padding-top: 10px; border-top: 2px dashed #ddd; }
-        .input-style { padding: 10px; border: 2px solid var(--choco-brown); border-radius: 10px; font-family: inherit; background: #FFF8E1; }
-        .add-btn-style { background: var(--honey-dark); color: white; border: 2px solid var(--choco-brown); border-radius: 10px; padding: 0 20px; cursor: pointer; }
         
+        /* 表格样式修正：禁止选中，防止滚动链 */
+        .table-container { 
+            flex: 1; overflow-y: auto; margin-bottom: 15px; width: 100%; 
+            overscroll-behavior: contain; /* 防止滚动触底触发浏览器后退 */
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: var(--honey-yellow); position: sticky; top: 0; color: var(--choco-brown); padding: 10px; text-align: left; user-select: none; }
+        td { 
+            padding: 8px; border-bottom: 1px solid #eee; color: #555; text-align: left; 
+            user-select: none; /* 关键：禁止选中文字，防止被识别为拖拽 */
+            -webkit-user-select: none; 
+            cursor: default;
+        }
+        
+        .action-row { display: flex; gap: 10px; padding-top: 10px; border-top: 2px dashed #ddd; flex-wrap: wrap; width: 100%; }
+        .input-style { 
+            padding: 10px; border: 2px solid var(--choco-brown); border-radius: 10px; 
+            font-family: inherit; background: #FFF8E1; 
+            user-select: text; /* 输入框允许输入 */
+            -webkit-user-select: text;
+        }
+        
+        /* 按钮通用样式 */
+        .action-btn { 
+            border: 2px solid var(--choco-brown); border-radius: 10px; padding: 8px 15px; 
+            cursor: pointer; font-weight: bold; flex: 1; min-width: 80px; color: white;
+            transition: all 0.1s; margin-top: 5px;
+            user-select: none;
+        }
+        .action-btn:active { transform: translateY(2px); }
+
+        .add-btn-style { background: var(--honey-dark); }
+        .import-btn-style { background: var(--matcha-green); }
+        
+        /* 弹窗专用样式 */
+        .dialog-title { font-size: 1.4rem; color: var(--choco-brown); margin: 0 0 15px 0; }
+        .dialog-msg { font-size: 1rem; color: #666; margin-bottom: 20px; }
+        .dialog-btn-group { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        .dialog-btn-row { display: flex; gap: 15px; width: 100%; justify-content: center; }
+
+        .btn-override { background: var(--danger-red); }
+        .btn-append { background: var(--matcha-green); }
+        .btn-cancel { background: var(--gray-cancel); color: #FFF; }
+        .btn-ok { background: var(--honey-yellow); color: var(--choco-brown); }
+
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: var(--honey-yellow); border-radius: 4px; }
@@ -318,8 +305,9 @@
         </div>
     </div>
 
+    <!-- 1. 设置主弹窗 -->
     <div class="modal-overlay" id="settingsModal">
-        <div class="modal-content">
+        <div class="settings-content">
             <div class="modal-header">
                 <span class="modal-title">📝 学生名单设置</span>
                 <button class="close-modal-btn" id="closeSettings">关闭</button>
@@ -330,15 +318,65 @@
                     <tbody id="tableBody"></tbody>
                 </table>
             </div>
-            <div class="action-row">
-                <input type="number" id="newId" class="input-style" placeholder="序号" style="width: 60px;">
+            
+            <div class="action-row" style="margin-bottom:10px;">
+                <input type="number" id="newId" class="input-style" placeholder="序号" style="width: 50px;">
                 <input type="text" id="newName" class="input-style" placeholder="姓名" style="flex: 1;">
-                <button class="add-btn-style" id="addStudent">添加</button>
+                <button class="action-btn add-btn-style" id="addStudent">添加</button>
+            </div>
+
+            <div class="action-row">
+                <input type="file" id="excelInput" accept=".xlsx, .xls" style="display: none;">
+                <button class="action-btn import-btn-style" id="triggerImport">📁 批量导入 Excel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Excel 导入确认弹窗 -->
+    <div class="modal-overlay" id="importModal" style="z-index: 400;">
+        <div class="dialog-content">
+            <h3 class="dialog-title">📊 导入选项</h3>
+            <p id="importMsg" class="dialog-msg">检测到数据...</p>
+            
+            <div class="dialog-btn-group">
+                <button class="action-btn btn-override" id="btnOverride">🔴 覆盖 (清空旧数据)</button>
+                <button class="action-btn btn-append" id="btnAppend">🟢 追加 (保留旧数据)</button>
+                <button class="action-btn btn-cancel" id="btnCancelImport">⚪ 取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 通用提示弹窗 (Alert) -->
+    <div class="modal-overlay" id="alertModal" style="z-index: 500;">
+        <div class="dialog-content">
+            <h3 class="dialog-title">🍯 提示</h3>
+            <p id="alertMsg" class="dialog-msg">这是一个提示</p>
+            <button class="action-btn btn-ok" onclick="closeAlert()">知道了</button>
+        </div>
+    </div>
+
+    <!-- 4. 通用确认弹窗 (Confirm) -->
+    <div class="modal-overlay" id="confirmModal" style="z-index: 500;">
+        <div class="dialog-content">
+            <h3 class="dialog-title">🤔 确认操作</h3>
+            <p id="confirmMsg" class="dialog-msg">确定要这样做吗？</p>
+            <div class="dialog-btn-row">
+                <button class="action-btn btn-override" id="btnConfirmYes">确定</button>
+                <button class="action-btn btn-cancel" onclick="closeConfirm()">取消</button>
             </div>
         </div>
     </div>
 
     <script>
+        /* --- 0. 防止拖拽触发浏览器导航 (关键修正) --- */
+        document.addEventListener('dragstart', (e) => {
+            // 禁止全局拖拽，防止触控板或鼠标拖拽文字触发返回
+            // 允许输入框内的默认行为
+            if (e.target.tagName !== 'INPUT') {
+                e.preventDefault();
+            }
+        });
+
         /* --- 1. 数据逻辑 --- */
         const defaultStudents = [
             {id: 1, name: "缪允赫"}, {id: 2, name: "梁宸睿"}, {id: 3, name: "聂子涵"}, {id: 4, name: "施议淳"},
@@ -354,15 +392,13 @@
             {id: 41, name: "方怡航"}
         ];
 
-        let students = JSON.parse(localStorage.getItem('studentList_v3')) || defaultStudents;
+        let students = JSON.parse(localStorage.getItem('studentList_v6')) || defaultStudents;
 
+        // 3D球体配色
         const ballColors = [
-            { h: '#FFCDD2', b: '#E57373', s: '#B71C1C' }, 
-            { h: '#C8E6C9', b: '#81C784', s: '#2E7D32' }, 
-            { h: '#BBDEFB', b: '#64B5F6', s: '#1565C0' }, 
-            { h: '#FFF9C4', b: '#FFF176', s: '#FBC02D' }, 
-            { h: '#E1BEE7', b: '#BA68C8', s: '#7B1FA2' }, 
-            { h: '#FFE0B2', b: '#FFB74D', s: '#E65100' } 
+            { h: '#FFCDD2', b: '#E57373', s: '#B71C1C' }, { h: '#C8E6C9', b: '#81C784', s: '#2E7D32' }, 
+            { h: '#BBDEFB', b: '#64B5F6', s: '#1565C0' }, { h: '#FFF9C4', b: '#FFF176', s: '#FBC02D' }, 
+            { h: '#E1BEE7', b: '#BA68C8', s: '#7B1FA2' }, { h: '#FFE0B2', b: '#FFB74D', s: '#E65100' } 
         ];
 
         const globe = document.getElementById('globe');
@@ -375,13 +411,47 @@
         const resultId = document.getElementById('resultId');
         const resultName = document.getElementById('resultName');
 
-        /* --- 2. 初始化: 填充糖果 --- */
+        /* --- 自定义弹窗逻辑 --- */
+        const alertModal = document.getElementById('alertModal');
+        const alertMsg = document.getElementById('alertMsg');
+        
+        function myAlert(msg) {
+            alertMsg.innerText = msg;
+            alertModal.style.display = 'flex';
+        }
+        window.closeAlert = function() {
+            alertModal.style.display = 'none';
+        }
+
+        const confirmModal = document.getElementById('confirmModal');
+        const confirmMsg = document.getElementById('confirmMsg');
+        const btnConfirmYes = document.getElementById('btnConfirmYes');
+        let confirmCallback = null;
+
+        function myConfirm(msg, callback) {
+            confirmMsg.innerText = msg;
+            confirmCallback = callback;
+            confirmModal.style.display = 'flex';
+        }
+        window.closeConfirm = function() {
+            confirmModal.style.display = 'none';
+            confirmCallback = null;
+        }
+        btnConfirmYes.addEventListener('click', () => {
+            if(confirmCallback) confirmCallback();
+            closeConfirm();
+        });
+
+
+        /* --- 2. 扭蛋机逻辑 --- */
         function fillMachine() {
             globe.innerHTML = '';
-            for(let i=0; i<35; i++) {
+            let ballCount = Math.max(20, Math.min(40, students.length));
+            
+            for(let i=0; i<ballCount; i++) {
                 const ball = document.createElement('div');
                 ball.classList.add('ball');
-                const size = Math.random() * 15 + 30; // 30-45px
+                const size = Math.random() * 15 + 30;
                 ball.style.width = `${size}px`;
                 ball.style.height = `${size}px`;
                 
@@ -390,32 +460,26 @@
                 ball.style.setProperty('--base', colorSet.b);
                 ball.style.setProperty('--shadow', colorSet.s);
 
-                // 初始静态位置
                 ball.style.left = Math.random() * 210 + 'px';
                 ball.style.top = Math.random() * 180 + 40 + 'px';
                 ball.style.transform = `rotate(${Math.random() * 360}deg)`;
-
                 globe.appendChild(ball);
             }
         }
 
-        /* --- 3. 抽奖与动画逻辑 --- */
         let isRunning = false;
 
         startBtn.addEventListener('click', () => {
             if(isRunning) return;
-            if(students.length === 0) { alert('名单为空！'); return; }
+            if(students.length === 0) { myAlert('名单为空！请在设置中导入名单。'); return; }
             isRunning = true;
             startBtn.disabled = true;
             
-            // 机器抖动
             machineWrapper.classList.add('shaking');
             knobArea.classList.add('active');
 
-            // --- 核心修改：让球乱飞 ---
             const balls = document.querySelectorAll('.ball');
             balls.forEach(ball => {
-                // 为每个球生成4个关键帧的随机位移 (范围 -80px 到 +80px)
                 const range = 80;
                 ball.style.setProperty('--x1', (Math.random() * range * 2 - range) + 'px');
                 ball.style.setProperty('--y1', (Math.random() * range * 2 - range) + 'px');
@@ -425,33 +489,22 @@
                 ball.style.setProperty('--y3', (Math.random() * range * 2 - range) + 'px');
                 ball.style.setProperty('--x4', (Math.random() * range * 2 - range) + 'px');
                 ball.style.setProperty('--y4', (Math.random() * range * 2 - range) + 'px');
-                
-                // 激活乱飞动画
                 ball.classList.add('chaos-active');
-                
-                // 给每个球一点随机的动画延迟，看起来更混乱自然
                 ball.style.animationDelay = Math.random() * 0.1 + 's';
             });
 
-            // 1.5秒后出结果
             setTimeout(() => {
                 machineWrapper.classList.remove('shaking');
                 knobArea.classList.remove('active');
-                
-                // 停止乱飞
                 balls.forEach(ball => ball.classList.remove('chaos-active'));
 
-                // 选人
-                const luckyIndex = Math.floor(Math.random() * students.length);
-                const luckyStudent = students[luckyIndex];
+                const luckyStudent = students[Math.floor(Math.random() * students.length)];
                 const luckyColor = ballColors[Math.floor(Math.random() * ballColors.length)];
 
-                // 掉落球外观设置
                 dropBall.style.display = 'block';
                 dropBall.style.setProperty('--highlight', luckyColor.h);
                 dropBall.style.background = `radial-gradient(circle at 30% 30%, ${luckyColor.h} 0%, ${luckyColor.b} 50%, ${luckyColor.s} 100%)`;
-                
-                void dropBall.offsetWidth; // 触发重绘
+                void dropBall.offsetWidth; 
                 dropBall.classList.add('dropping');
 
                 setTimeout(() => {
@@ -477,7 +530,7 @@
             }, 500);
         });
 
-        /* --- 4. 设置面板 --- */
+        /* --- 3. 设置面板 --- */
         const settingsModal = document.getElementById('settingsModal');
         const tableBody = document.getElementById('tableBody');
 
@@ -488,27 +541,117 @@
                 tr.innerHTML = `<td>${s.id}</td><td>${s.name}</td><td><button style="background:#FFAB91; border:1px solid #BF360C; color:#fff; border-radius:5px; cursor:pointer;" onclick="delStudent(${index})">删除</button></td>`;
                 tableBody.appendChild(tr);
             });
-            localStorage.setItem('studentList_v3', JSON.stringify(students));
+            localStorage.setItem('studentList_v6', JSON.stringify(students));
+            fillMachine();
         }
 
         document.getElementById('openSettings').addEventListener('click', () => { renderTable(); settingsModal.style.display = 'flex'; });
         document.getElementById('closeSettings').addEventListener('click', () => { settingsModal.style.display = 'none'; });
+        settingsModal.addEventListener('click', (e) => { if(e.target === settingsModal) settingsModal.style.display = 'none'; });
+
         document.getElementById('addStudent').addEventListener('click', () => {
             const id = document.getElementById('newId').value.trim();
             const name = document.getElementById('newName').value.trim();
             if(id && name) {
                 students.push({id, name});
-                students.sort((a,b) => a.id - b.id);
+                students.sort((a,b) => parseInt(a.id) - parseInt(b.id)); 
                 document.getElementById('newId').value = ''; document.getElementById('newName').value = '';
                 renderTable();
-            } else { alert("请输入完整信息"); }
+            } else { myAlert("请输入完整的序号和姓名！"); }
         });
-        window.delStudent = function(index) {
-            if(confirm("确定删除吗？")) { students.splice(index, 1); renderTable(); }
-        };
-        settingsModal.addEventListener('click', (e) => { if(e.target === settingsModal) settingsModal.style.display = 'none'; });
 
+        window.delStudent = function(index) {
+            myConfirm("确定要删除这位同学吗？", () => {
+                students.splice(index, 1);
+                renderTable();
+            });
+        };
+
+        /* --- 4. EXCEL 导入逻辑 --- */
+        const excelInput = document.getElementById('excelInput');
+        const triggerImportBtn = document.getElementById('triggerImport');
+        
+        const importModal = document.getElementById('importModal');
+        const importMsg = document.getElementById('importMsg');
+        const btnOverride = document.getElementById('btnOverride');
+        const btnAppend = document.getElementById('btnAppend');
+        const btnCancelImport = document.getElementById('btnCancelImport');
+
+        let tempImportStudents = [];
+
+        triggerImportBtn.addEventListener('click', () => { excelInput.click(); });
+
+        excelInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                try {
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+
+                    tempImportStudents = [];
+                    jsonData.forEach((row) => {
+                        if(row[0] != undefined && row[1] != undefined) {
+                            if(String(row[0]).includes('序号') || String(row[1]).includes('姓名')) return;
+                            tempImportStudents.push({
+                                id: String(row[0]).trim(),
+                                name: String(row[1]).trim()
+                            });
+                        }
+                    });
+
+                    if(tempImportStudents.length === 0) {
+                        myAlert("未检测到有效数据，请检查文件格式。");
+                        excelInput.value = '';
+                        return;
+                    }
+
+                    importMsg.innerText = `解析成功！发现 ${tempImportStudents.length} 名学生。`;
+                    importModal.style.display = 'flex';
+
+                } catch (err) {
+                    console.error(err);
+                    myAlert("文件解析失败，请确保是标准的 xls 或 xlsx 文件。");
+                    excelInput.value = '';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        btnOverride.addEventListener('click', () => {
+            students = tempImportStudents;
+            students.sort((a,b) => parseInt(a.id) - parseInt(b.id));
+            renderTable();
+            closeImportModal();
+            myAlert(`已覆盖导入！当前共 ${students.length} 人。`);
+        });
+
+        btnAppend.addEventListener('click', () => {
+            students = students.concat(tempImportStudents);
+            students.sort((a,b) => parseInt(a.id) - parseInt(b.id));
+            renderTable();
+            closeImportModal();
+            myAlert(`已追加导入！当前共 ${students.length} 人。`);
+        });
+
+        btnCancelImport.addEventListener('click', () => {
+            closeImportModal();
+        });
+
+        function closeImportModal() {
+            importModal.style.display = 'none';
+            excelInput.value = ''; 
+            tempImportStudents = [];
+        }
+
+        // 初始化
         fillMachine();
+
     </script>
 </body>
 </html>
